@@ -1,0 +1,7 @@
+id: R001
+name: SSH brute force
+type: brute_force
+severity: high
+mitre: T1110.001
+threshold: 5
+window_seconds: 120

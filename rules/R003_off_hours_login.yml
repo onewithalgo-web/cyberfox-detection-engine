@@ -1,0 +1,8 @@
+id: R003
+name: Off-hours login
+type: off_hours_login
+severity: medium
+mitre: T1078
+business_start: 6
+business_end: 20
+allow_users: []

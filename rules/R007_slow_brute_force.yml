@@ -1,0 +1,7 @@
+id: R007
+name: Slow brute force
+type: brute_force
+severity: medium
+mitre: T1110.001
+threshold: 8
+window_seconds: 3600

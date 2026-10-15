@@ -1,0 +1,7 @@
+id: R004
+name: Login succeeded after repeated failures
+type: success_after_failures
+severity: critical
+mitre: T1110
+threshold: 3
+window_seconds: 600

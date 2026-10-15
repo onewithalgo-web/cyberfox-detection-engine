@@ -1,0 +1,5 @@
+id: R006
+name: Account added to privileged group
+type: admin_account_added
+severity: high
+mitre: T1136.001

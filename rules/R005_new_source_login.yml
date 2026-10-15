@@ -1,0 +1,7 @@
+id: R005
+name: Login from new source IP
+type: new_source_login
+severity: medium
+mitre: T1078
+learning_seconds: 259200
+shared_ip_min_users: 3
