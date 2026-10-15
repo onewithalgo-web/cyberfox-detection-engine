@@ -35,16 +35,15 @@ The dashboard is a single self-contained HTML file (alerts by rule / IP / day, c
 `tools/generate_logs.py` builds 7 days of seeded logs: normal users, typos, a shared NAT office IP,
 a legitimate night-shift user, benign VPN source changes, internet background noise, plus 8 labelled
 attacks (fast/slow brute force, fast/slow spraying, brute force that succeeds, stolen credentials at night,
-privilege escalation). `tools/evaluate.py` scores alerts against the labels. Results, 50 seeds, 400 attacks:
+privilege escalation). `tools/evaluate.py` scores alerts against the labels. Results (20 seeds unless stated; 8 attacks per seed):
 
 | Config | Attack detection | Alert precision | False positives / log |
 |---|---|---|---|
 | Rules R001-R006 only, default thresholds (baseline) | 75% (slow attacks missed) | ~35% | ~15 |
 | + R007/R008 slow rules, default thresholds | 100% | ~63% | ~8 |
-| + `allow_users=ops_night` (tuned) | 100% | ~91% | ~1.3 |
-| Tuned, noise x2 (20 seeds) | 100% | ~84% | ~2.7 |
+| + `allow_users=ops_night` (tuned; 50 seeds: 91.3%, 1.3 FP/log) | 100% | ~91% | ~1.4 |
+| Tuned, noise x2 | 100% | ~84% | ~2.7 |
 
-Baseline row is from a 20-seed run before R007/R008 were added.
 Remaining false positives are mostly R005 (benign VPN source changes) and occasional NAT typo bursts.
 
 ## Limitations (be honest in the report)
