@@ -109,5 +109,61 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual(missed, [], f"seed {seed} missed {[m['type'] for m in missed]}")
 
 
+class WindowsAndNewRules(unittest.TestCase):
+    def test_windows_matches_linux(self):
+        import tempfile
+        from detector.cli import analyse
+        from tools.to_windows_csv import convert, FIELDS
+        import csv
+        lines, labels = generate(3, hard=True)
+        with tempfile.TemporaryDirectory() as d:
+            log = os.path.join(d, "auth.log")
+            with open(log, "w") as lf:
+                lf.write("\n".join(lines) + "\n")
+            from detector.parser import parse_file
+            csvp = os.path.join(d, "sec.csv")
+            with open(csvp, "w", newline="") as f:
+                w = csv.writer(f); w.writerow(FIELDS); w.writerows(convert(parse_file(log, 2026)))
+            _, a_lin = analyse(log)
+            _, a_win = analyse(csvp)
+        key = lambda a: (a.rule_id, a.ts, tuple(a.users))
+        self.assertEqual(sorted(map(key, a_lin)), sorted(map(key, a_win)))
+        self.assertGreater(len(a_win), 0)
+
+    def test_windows_ignores_service_logons(self):
+        from detector.parser_windows import parse_row
+        row = {"TimeCreated": "2026-10-01T10:00:00", "Id": "4625", "TargetUserName": "svc", "IpAddress": "1.2.3.4", "LogonType": "5"}
+        self.assertIsNone(parse_row(row, "r"))
+
+    def test_windows_group_filter(self):
+        from detector.parser_windows import parse_row
+        base = {"TimeCreated": "2026-10-01T10:00:00", "Id": "4732", "TargetUserName": "bob"}
+        self.assertIsNotNone(parse_row({**base, "GroupName": "Administrators"}, "r"))
+        self.assertIsNone(parse_row({**base, "GroupName": "Remote Desktop Users"}, "r"))
+
+    def test_distributed_brute_force(self):
+        evs = [ev(i * 30, user="alice", ip=f"9.9.9.{i % 5}") for i in range(12)]
+        a = alerts(evs)
+        self.assertIn("R010", ids(a))
+        self.assertNotIn("R001", ids(a))  # no single IP crosses the per-IP threshold
+
+    def test_r005_ignore_cidrs(self):
+        base = datetime(2026, 10, 1, 9)
+        evs = [Event(base, "h", "alice", "1.1.1.1", True, raw="r"),
+               Event(base + timedelta(days=5), "h", "alice", "172.16.0.9", True, raw="r")]
+        self.assertIn("R005", ids(alerts(evs)))
+        self.assertNotIn("R005", ids(alerts(evs, R005={"ignore_cidrs": "172.16.0.0/16"})))
+
+    def test_account_created(self):
+        e = Event(T0, "h", "newuser", "-", True, raw="r", kind="account_created")
+        self.assertIn("R009", ids(alerts([e])))
+
+    def test_very_slow_brute_force(self):
+        evs = [ev(i * 600) for i in range(12)]  # 12 failures over 2 h
+        a = ids(alerts(evs))
+        self.assertIn("R011", a)
+        self.assertNotIn("R001", a)
+
+
 if __name__ == "__main__":
     unittest.main()

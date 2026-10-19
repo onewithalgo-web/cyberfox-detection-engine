@@ -1,0 +1,8 @@
+id: R010
+name: Distributed brute force on one account
+type: distributed_brute_force
+severity: high
+mitre: T1110.001
+threshold: 10
+distinct_ips: 4
+window_seconds: 900

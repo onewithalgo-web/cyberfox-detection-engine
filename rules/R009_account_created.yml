@@ -1,0 +1,5 @@
+id: R009
+name: New user account created
+type: account_created
+severity: low
+mitre: T1136.001

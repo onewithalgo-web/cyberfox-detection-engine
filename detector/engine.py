@@ -1,5 +1,6 @@
 """Rule-based detection engine. Rules are YAML; every alert carries its evidence lines."""
 import glob
+import ipaddress
 import os
 from collections import defaultdict, deque
 from datetime import timedelta
@@ -52,6 +53,17 @@ def run_rule(rule, events, trusted_ips=()):
                              reason=f"{len(w)} failed logins for '{user}' from {ip} within {int(window.total_seconds())}s (threshold {n})",
                              evidence=[x.raw for x in w], **base))
 
+    elif t == "distributed_brute_force":
+        # one account hammered from many IPs, each IP staying under the per-IP threshold
+        fails = [e for e in logins if not e.success]
+        n, m = rule["threshold"], rule["distinct_ips"]
+        for user, w in _window_hits(fails, lambda e: e.user, window,
+                                    lambda d: len(d) >= n and len({x.src_ip for x in d}) >= m):
+            ips = sorted({x.src_ip for x in w})
+            out.append(Alert(ts=w[-1].ts, src_ip="multiple", users=[user],
+                             reason=f"{len(w)} failures for '{user}' from {len(ips)} different IPs within {int(window.total_seconds())}s (distributed attack)",
+                             evidence=[x.raw for x in w], **base))
+
     elif t == "password_spraying":
         fails = [e for e in logins if not e.success]
         n = rule["distinct_users"]
@@ -93,16 +105,32 @@ def run_rule(rule, events, trusted_ips=()):
         for e in ok:
             users_per_ip[e.src_ip].add(e.user)
         shared_min = rule.get("shared_ip_min_users", 3)
+        cidrs = rule.get("ignore_cidrs") or []
+        cidrs = [c for c in (cidrs.split(",") if isinstance(cidrs, str) else cidrs) if c]
+        nets = [ipaddress.ip_network(c.strip(), strict=False) for c in cidrs]
+
+        def ignored(ip):
+            try:
+                a = ipaddress.ip_address(ip)
+            except ValueError:
+                return False
+            return any(a in n for n in nets)
         if ok:
             learn_until = events[0].ts + timedelta(seconds=rule.get("learning_seconds", 86400))
             for e in ok:
-                if len(users_per_ip[e.src_ip]) >= shared_min:
-                    continue  # NAT / jump host: many users share it, not a per-user signal
+                if len(users_per_ip[e.src_ip]) >= shared_min or ignored(e.src_ip):
+                    continue  # NAT / jump host / known VPN pool: not a per-user signal
                 if e.ts > learn_until and seen[e.user] and e.src_ip not in seen[e.user]:
                     out.append(Alert(ts=e.ts, src_ip=e.src_ip, users=[e.user],
                                      reason=f"'{e.user}' logged in from never-seen source {e.src_ip} (known: {', '.join(sorted(seen[e.user]))})",
                                      evidence=[e.raw], **base))
                 seen[e.user].add(e.src_ip)
+
+    elif t == "account_created":
+        for e in events:
+            if e.kind == "account_created":
+                out.append(Alert(ts=e.ts, src_ip="-", users=[e.user],
+                                 reason=f"new user account '{e.user}' was created", evidence=[e.raw], **base))
 
     elif t == "admin_account_added":
         for e in events:

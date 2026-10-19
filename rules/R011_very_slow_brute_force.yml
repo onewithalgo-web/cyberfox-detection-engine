@@ -1,0 +1,7 @@
+id: R011
+name: Very slow brute force (24 h)
+type: brute_force
+severity: low
+mitre: T1110.001
+threshold: 10
+window_seconds: 86400

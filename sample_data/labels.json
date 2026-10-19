@@ -6,9 +6,10 @@
     "start": "2026-10-02T03:54:00",
     "end": "2026-10-02T03:54:40",
     "expected_rules": [
-      "R001"
-    ],
-    "detectable": true
+      "R001",
+      "R007",
+      "R011"
+    ]
   },
   {
     "id": 2,
@@ -17,9 +18,10 @@
     "start": "2026-10-03T04:50:00",
     "end": "2026-10-03T04:58:00",
     "expected_rules": [
-      "R001"
-    ],
-    "detectable": false
+      "R001",
+      "R007",
+      "R011"
+    ]
   },
   {
     "id": 3,
@@ -28,9 +30,9 @@
     "start": "2026-10-04T02:47:00",
     "end": "2026-10-04T02:49:00",
     "expected_rules": [
-      "R002"
-    ],
-    "detectable": true
+      "R002",
+      "R008"
+    ]
   },
   {
     "id": 4,
@@ -39,9 +41,9 @@
     "start": "2026-10-05T01:19:00",
     "end": "2026-10-05T01:59:00",
     "expected_rules": [
-      "R002"
-    ],
-    "detectable": false
+      "R002",
+      "R008"
+    ]
   },
   {
     "id": 5,
@@ -51,9 +53,11 @@
     "end": "2026-10-06T02:04:40",
     "expected_rules": [
       "R001",
-      "R004"
-    ],
-    "detectable": true
+      "R004",
+      "R007",
+      "R003",
+      "R005"
+    ]
   },
   {
     "id": 6,
@@ -64,8 +68,7 @@
     "expected_rules": [
       "R003",
       "R005"
-    ],
-    "detectable": true
+    ]
   },
   {
     "id": 7,
@@ -75,8 +78,7 @@
     "end": "2026-10-06T03:54:00",
     "expected_rules": [
       "R006"
-    ],
-    "detectable": true
+    ]
   },
   {
     "id": 8,
@@ -85,8 +87,39 @@
     "start": "2026-10-07T14:27:00",
     "end": "2026-10-07T14:28:00",
     "expected_rules": [
-      "R001"
-    ],
-    "detectable": true
+      "R001",
+      "R007",
+      "R011"
+    ]
+  },
+  {
+    "id": 9,
+    "type": "distributed_brute_force",
+    "src_ip": "*",
+    "start": "2026-10-03T15:20:00",
+    "end": "2026-10-03T15:28:00",
+    "expected_rules": [
+      "R010"
+    ]
+  },
+  {
+    "id": 10,
+    "type": "brute_force_very_slow",
+    "src_ip": "198.51.100.30",
+    "start": "2026-10-04T05:55:00",
+    "end": "2026-10-04T07:55:00",
+    "expected_rules": [
+      "R001",
+      "R007",
+      "R011"
+    ]
+  },
+  {
+    "id": 11,
+    "type": "valid_credentials_insider",
+    "src_ip": "192.168.1.13",
+    "start": "2026-10-05T13:00:00",
+    "end": "2026-10-05T13:00:00",
+    "expected_rules": []
   }
 ]

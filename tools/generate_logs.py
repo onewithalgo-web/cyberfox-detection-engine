@@ -29,7 +29,7 @@ def login(ts, ok, user, ip, method="password"):
     return ts, fmt(ts, f"Failed password for {'invalid user ' if user not in USERS + [NIGHT_USER] else ''}{user} from {ip} port {random.randint(30000, 60000)} ssh2")
 
 
-def generate(seed, days=7, noise=1.0):
+def generate(seed, days=7, noise=1.0, hard=False):
     random.seed(seed)
     rows, labels = [], []
     home = {u: f"192.168.1.{10 + i}" for i, u in enumerate(USERS)}
@@ -75,13 +75,13 @@ def generate(seed, days=7, noise=1.0):
     t0 = when(1, 3); ip = "198.51.100.10"
     for i in range(10):
         rows.append(login(t0 + timedelta(seconds=4 * i), False, "root", ip))
-    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=40), ["R001", "R007"])
+    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=40), ["R001", "R007", "R011"])
 
     # 2. slow brute force: 1 try / 40s -> 3 per 120s window, below threshold 5
     t0 = when(2, 4); ip = "198.51.100.11"
     for i in range(12):
         rows.append(login(t0 + timedelta(seconds=40 * i), False, "admin", ip))
-    aid += 1; label(aid, "brute_force_slow", ip, t0, t0 + timedelta(seconds=480), ["R001", "R007"])
+    aid += 1; label(aid, "brute_force_slow", ip, t0, t0 + timedelta(seconds=480), ["R001", "R007", "R011"])
 
     # 3. fast spray: 6 users, 20s apart
     t0 = when(3, 2); ip = "198.51.100.12"
@@ -117,7 +117,23 @@ def generate(seed, days=7, noise=1.0):
     t0 = when(6, 14); ip = "198.51.100.16"
     for i in range(6):
         rows.append(login(t0 + timedelta(seconds=10 * i), False, "bob", ip))
-    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=60), ["R001", "R007"])
+    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=60), ["R001", "R007", "R011"])
+
+    if hard:
+        # distributed brute force: 12 failures on one account from 6 IPs (2 each, under per-IP thresholds)
+        t0 = when(2, 15)
+        for i in range(12):
+            rows.append(login(t0 + timedelta(seconds=40 * i), False, "alice", f"203.0.113.{100 + i % 6}"))
+        aid += 1; label(aid, "distributed_brute_force", "*", t0, t0 + timedelta(seconds=480), ["R010"])
+        # very slow brute force: 1 try / 10 min for ~2 h (below even the 1 h slow rule)
+        t0 = when(3, 5); ip = "198.51.100.30"
+        for i in range(12):
+            rows.append(login(t0 + timedelta(minutes=10 * i), False, "root", ip))
+        aid += 1; label(aid, "brute_force_very_slow", ip, t0, t0 + timedelta(minutes=120), ["R001", "R007", "R011"])
+        # insider with valid credentials, normal hours, known IP: no rule can see this
+        t0 = START + timedelta(days=4, hours=13)
+        rows.append(login(t0, True, "dave", home["dave"]))
+        aid += 1; label(aid, "valid_credentials_insider", home["dave"], t0, t0, [])
 
     rows.sort(key=lambda r: r[0])
     return [r[1] for r in rows], labels
@@ -128,8 +144,9 @@ def main():
     ap.add_argument("--out", default="sample_data")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--noise", type=float, default=1.0)
+    ap.add_argument("--hard", action="store_true", help="add evasion attacks (distributed, very slow, insider)")
     a = ap.parse_args()
-    lines, labels = generate(a.seed, noise=a.noise)
+    lines, labels = generate(a.seed, noise=a.noise, hard=a.hard)
     os.makedirs(a.out, exist_ok=True)
     with open(os.path.join(a.out, "auth.log"), "w") as f:
         f.write("\n".join(lines) + "\n")

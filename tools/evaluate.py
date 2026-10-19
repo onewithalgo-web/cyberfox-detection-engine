@@ -25,7 +25,7 @@ def score(alerts, labels):
     for a in alerts:
         match = None
         for l in labels:
-            if (a.src_ip == l["src_ip"] and a.rule_id in l["expected_rules"]
+            if (l["src_ip"] in ("*", a.src_ip) and a.rule_id in l["expected_rules"]
                     and datetime.fromisoformat(l["start"]) <= a.ts <= datetime.fromisoformat(l["end"]) + SLACK):
                 match = l
                 break
@@ -52,6 +52,7 @@ def main():
     ap.add_argument("labels", nargs="?")
     ap.add_argument("--seeds", type=int, default=0, help="generate + score N seeds instead of a single file")
     ap.add_argument("--noise", type=float, default=1.0)
+    ap.add_argument("--hard", action="store_true", help="include evasion attacks")
     ap.add_argument("--set", action="append")
     ap.add_argument("--trusted-ip", action="append", default=[])
     a = ap.parse_args()
@@ -60,7 +61,7 @@ def main():
     if a.seeds:
         rows = []
         for s in range(1, a.seeds + 1):
-            lines, labels = generate(s, noise=a.noise)
+            lines, labels = generate(s, noise=a.noise, hard=a.hard)
             with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
                 f.write("\n".join(lines) + "\n")
             rows.append(run_once(f.name, labels, ov, a.trusted_ip)); os.unlink(f.name)
