@@ -8,16 +8,16 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from detector.parser import parse_file  # noqa: E402
 
-FIELDS = ["TimeCreated", "Id", "TargetUserName", "IpAddress", "LogonType", "GroupName", "ComputerName"]
+FIELDS = ["TimeCreated", "Id", "TargetUserName", "IpAddress", "LogonType", "SubStatus", "GroupName", "ComputerName"]
 
 
 def convert(events):
     for e in events:
         ts = e.ts.strftime("%Y-%m-%dT%H:%M:%S")
         if e.kind == "admin_added":
-            yield [ts, 4732, e.user, "-", "", "Administrators", "WIN01"]
+            yield [ts, 4732, e.user, "-", "", "", "Administrators", "WIN01"]
         else:
-            yield [ts, 4624 if e.success else 4625, e.user, e.src_ip, 3, "", "WIN01"]
+            yield [ts, 4624 if e.success else 4625, e.user, e.src_ip, 3, "0xC0000064" if e.invalid else ("0xC000006A" if not e.success else ""), "", "WIN01"]
 
 
 def main():

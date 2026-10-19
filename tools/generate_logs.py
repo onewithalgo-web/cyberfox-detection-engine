@@ -75,13 +75,13 @@ def generate(seed, days=7, noise=1.0, hard=False):
     t0 = when(1, 3); ip = "198.51.100.10"
     for i in range(10):
         rows.append(login(t0 + timedelta(seconds=4 * i), False, "root", ip))
-    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=40), ["R001", "R007", "R011"])
+    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=40), ["R001", "R007", "R011", "R012"])
 
     # 2. slow brute force: 1 try / 40s -> 3 per 120s window, below threshold 5
     t0 = when(2, 4); ip = "198.51.100.11"
     for i in range(12):
         rows.append(login(t0 + timedelta(seconds=40 * i), False, "admin", ip))
-    aid += 1; label(aid, "brute_force_slow", ip, t0, t0 + timedelta(seconds=480), ["R001", "R007", "R011"])
+    aid += 1; label(aid, "brute_force_slow", ip, t0, t0 + timedelta(seconds=480), ["R001", "R007", "R011", "R012"])
 
     # 3. fast spray: 6 users, 20s apart
     t0 = when(3, 2); ip = "198.51.100.12"
@@ -100,7 +100,7 @@ def generate(seed, days=7, noise=1.0, hard=False):
     for i in range(7):
         rows.append(login(t0 + timedelta(seconds=5 * i), False, "heidi", ip))
     rows.append(login(t0 + timedelta(seconds=40), True, "heidi", ip))
-    aid += 1; label(aid, "brute_force_success", ip, t0, t0 + timedelta(seconds=40), ["R001", "R004", "R007", "R003", "R005"])
+    aid += 1; label(aid, "brute_force_success", ip, t0, t0 + timedelta(seconds=40), ["R001", "R004", "R007", "R003", "R005", "R012"])
 
     # 6. stolen credentials used at night from a new IP (single success: only R003/R005 can see it)
     t0 = when(5, 0) + timedelta(hours=3); ip = "198.51.100.15"
@@ -117,7 +117,7 @@ def generate(seed, days=7, noise=1.0, hard=False):
     t0 = when(6, 14); ip = "198.51.100.16"
     for i in range(6):
         rows.append(login(t0 + timedelta(seconds=10 * i), False, "bob", ip))
-    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=60), ["R001", "R007", "R011"])
+    aid += 1; label(aid, "brute_force_fast", ip, t0, t0 + timedelta(seconds=60), ["R001", "R007", "R011", "R012"])
 
     if hard:
         # distributed brute force: 12 failures on one account from 6 IPs (2 each, under per-IP thresholds)
@@ -129,7 +129,7 @@ def generate(seed, days=7, noise=1.0, hard=False):
         t0 = when(3, 5); ip = "198.51.100.30"
         for i in range(12):
             rows.append(login(t0 + timedelta(minutes=10 * i), False, "root", ip))
-        aid += 1; label(aid, "brute_force_very_slow", ip, t0, t0 + timedelta(minutes=120), ["R001", "R007", "R011"])
+        aid += 1; label(aid, "brute_force_very_slow", ip, t0, t0 + timedelta(minutes=120), ["R001", "R007", "R011", "R012"])
         # insider with valid credentials, normal hours, known IP: no rule can see this
         t0 = START + timedelta(days=4, hours=13)
         rows.append(login(t0, True, "dave", home["dave"]))

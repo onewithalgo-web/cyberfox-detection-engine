@@ -1,0 +1,7 @@
+id: R012
+name: Probing of non-existent accounts
+type: invalid_user_probing
+severity: medium
+mitre: T1110.001
+threshold: 5
+window_seconds: 86400

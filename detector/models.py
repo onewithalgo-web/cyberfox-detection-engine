@@ -11,7 +11,9 @@ class Event:
     success: bool
     method: str = "password"
     raw: str = ""
-    kind: str = "login"  # login | admin_added
+    kind: str = "login"  # login | admin_added | account_created
+    invalid: bool = False  # sshd reported the account does not exist
+    repeat: int = 1  # syslog "message repeated N times" compresses N identical events into one line
 
 
 @dataclass

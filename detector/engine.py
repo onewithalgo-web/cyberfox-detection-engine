@@ -64,6 +64,16 @@ def run_rule(rule, events, trusted_ips=()):
                              reason=f"{len(w)} failures for '{user}' from {len(ips)} different IPs within {int(window.total_seconds())}s (distributed attack)",
                              evidence=[x.raw for x in w], **base))
 
+    elif t == "invalid_user_probing":
+        # persistent low-rate scanning of non-existent accounts from one IP (sshd flags them 'invalid user')
+        probes = [e for e in logins if not e.success and e.invalid]
+        n = rule["threshold"]
+        for ip, w in _window_hits(probes, lambda e: e.src_ip, window, lambda d: len(d) >= n):
+            names = sorted({x.user for x in w})
+            out.append(Alert(ts=w[-1].ts, src_ip=ip, users=names,
+                             reason=f"{ip} tried {len(w)} non-existent accounts ({', '.join(names[:5])}) within {int(window.total_seconds())}s",
+                             evidence=[x.raw for x in w], **base))
+
     elif t == "password_spraying":
         fails = [e for e in logins if not e.success]
         n = rule["distinct_users"]

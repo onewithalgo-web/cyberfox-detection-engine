@@ -2,9 +2,9 @@
 
 Expected columns (case-insensitive, extra columns ignored), as produced by e.g.
   Get-WinEvent -FilterHashtable @{LogName='Security'; Id=4624,4625,4720,4732} |
-    Select TimeCreated,Id,TargetUserName,IpAddress,LogonType,GroupName,ComputerName | Export-Csv ...
+    Select TimeCreated,Id,TargetUserName,IpAddress,LogonType,SubStatus,GroupName,ComputerName | Export-Csv ...
 
-Event IDs: 4625 failed logon, 4624 successful logon (interactive/network/RDP types only),
+Event IDs: 4625 failed logon (SubStatus 0xC0000064 = user does not exist), 4624 successful logon (interactive/network/RDP types only),
 4732 / 4728 / 4756 member added to a security-enabled group (privileged groups only),
 4720 user account created.
 """
@@ -39,7 +39,8 @@ def parse_row(row, raw):
     if eid in ("4624", "4625"):
         if r.get("logontype", "") not in LOGON_TYPES_OK or ip == "-":
             return None
-        return Event(ts, host, user, ip, eid == "4624", "windows", raw)
+        return Event(ts, host, user, ip, eid == "4624", "windows", raw,
+                     invalid=r.get("substatus", "").lower() == "0xc0000064")
     if eid in ("4732", "4728", "4756"):
         if r.get("groupname", "").lower() in PRIVILEGED:
             return Event(ts, host, user, "-", True, "-", raw, kind="admin_added")

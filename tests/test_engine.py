@@ -158,6 +158,27 @@ class WindowsAndNewRules(unittest.TestCase):
         e = Event(T0, "h", "newuser", "-", True, raw="r", kind="account_created")
         self.assertIn("R009", ids(alerts([e])))
 
+    def test_parser_repeated_message_expands(self):
+        from detector.parser import parse_line
+        e = parse_line("Dec 10 07:13:56 LabSZ sshd[24227]: message repeated 5 times: [ Failed password for root from 5.36.59.76 port 42393 ssh2]", 2015)
+        self.assertEqual((e.user, e.src_ip, e.repeat, e.success), ("root", "5.36.59.76", 5, False))
+
+    def test_parser_double_space_invalid_user(self):
+        from detector.parser import parse_line
+        e = parse_line("Dec 10 08:24:35 LabSZ sshd[24361]: Failed password for invalid user  0101 from 5.188.10.180 port 36279 ssh2", 2015)
+        self.assertEqual((e.user, e.invalid), ("0101", True))
+
+    def test_invalid_user_probing_low_rate(self):
+        evs = [ev(i * 3000, user=f"test{i}", ip="52.80.34.196") for i in range(5)]  # 1 per 50 min
+        for e in evs:
+            e.invalid = True
+        a = ids(alerts(evs))
+        self.assertIn("R012", a)
+        self.assertNotIn("R001", a)
+
+    def test_invalid_user_probing_ignores_valid_users(self):
+        self.assertNotIn("R012", ids(alerts([ev(i * 3000, user="alice") for i in range(5)])))
+
     def test_very_slow_brute_force(self):
         evs = [ev(i * 600) for i in range(12)]  # 12 failures over 2 h
         a = ids(alerts(evs))
