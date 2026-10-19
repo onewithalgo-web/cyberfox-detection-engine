@@ -58,10 +58,10 @@ same events as a Linux log and as a Windows CSV produce identical alerts.
 | B. + R010 distributed brute force | 81.8% | 92.2% | 1.3 |
 | C. + R011 very slow brute force (all rules) | 90.9% | 93.4% | 1.3 |
 | D. + R012 invalid-user probing, R005 `ignore_cidrs` (known VPN pool) | 90.9% | 99.2% | 0.2 |
-| E. D with 2x benign noise | 90.9% | 97.5% | 0.5 |
-| F. D with 3x benign noise | 90.9% | 97.7% | 0.4 |
+| E. D with 2x benign noise | 90.9% | 97.8% | 0.5 |
+| F. D with 3x benign noise | 90.9% | 98.0% | 0.4 |
 
-On the original 8-attack set (no evasion attacks, 50 seeds) the Week 2 rules reached 100% detection at 91.3% precision.
+On the original 8-attack set (no evasion attacks, 50 seeds): Week 2 rules 100% detection at 91.3% precision; final rules 100% at 99.1% precision (0.2 FP per log).
 
 ## Independent real-world test (LogHub OpenSSH, real sshd logs)
 Tested on 1,999 lines of public real-world sshd logs (12 attacker IPs, 528 failed logins, 1 legitimate login). First run:
