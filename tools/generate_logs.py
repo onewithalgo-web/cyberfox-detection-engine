@@ -2,6 +2,8 @@
 
 Benign background: normal users with fixed home IPs, typos, a shared NAT office IP,
 a legitimate night-shift user, occasional VPN source changes.
+Known simplification: any name outside the user list (including "root") is logged as "invalid user",
+unlike real sshd, so R012 also fires on the root/admin brute-force scenarios here (labelled as corroborating).
 Attacks: fast/slow brute force, fast/slow spraying, brute force that succeeds, off-hours
 use of stolen credentials, privileged group add. 'slow' variants deliberately sit below the
 rule thresholds to measure what the rules miss (reported honestly as evasions).

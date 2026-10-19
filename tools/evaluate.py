@@ -70,6 +70,7 @@ def main():
         print(f"seeds={a.seeds} noise={a.noise} overrides={ov or '-'}")
         print(f"attack detection (recall): {det}/{att} = {det / att:.2%}")
         print(f"alert precision: {tp}/{tp + fp} = {tp / max(tp + fp, 1):.2%}   false positives/log: {fp / a.seeds:.1f}")
+        print(f"incident precision (stricter, one credit per detected attack): {det}/{det + fp} = {det / max(det + fp, 1):.2%}")
         from collections import Counter
         print("false positives by rule:", dict(Counter(k for r in rows for k, v in r["fp_by_rule"].items() for _ in range(v))))
         print("missed attack types:", dict(Counter(m for r in rows for m in r["missed"])))

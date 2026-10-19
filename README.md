@@ -52,19 +52,27 @@ same events as a Linux log and as a Windows CSV produce identical alerts.
 
 ## Results (30 seeds, 11 attacks per seed = 330 labelled attacks, evasion attacks included)
 
-| Step | Attack detection | Alert precision | False positives / log |
-|---|---|---|---|
-| A. Week 2 rules (R001-R008, night-shift allow-list) | 72.7% | 91.7% | 1.3 |
-| B. + R010 distributed brute force | 81.8% | 92.2% | 1.3 |
-| C. + R011 very slow brute force (all rules) | 90.9% | 93.4% | 1.3 |
-| D. + R012 invalid-user probing, R005 `ignore_cidrs` (known VPN pool) | 90.9% | 99.2% | 0.2 |
-| E. D with 2x benign noise | 90.9% | 97.8% | 0.5 |
-| F. D with 3x benign noise | 90.9% | 98.0% | 0.4 |
+*Alert precision* counts every alert on a labelled attack as correct (several rules can corroborate one attack, which flatters it).
+*Incident precision* is stricter: one credit per detected attack, so a corroborating alert adds nothing.
+
+| Step | Attack detection | Alert precision | Incident precision | False positives / log |
+|---|---|---|---|---|
+| A. Week 2 rules (R001-R008, night-shift allow-list) | 72.7% | 91.7% | 86.3% | 1.3 |
+| B. + R010 distributed brute force | 81.8% | 92.2% | 87.7% | 1.3 |
+| C. + R011 very slow brute force (R001-R011) | 90.9% | 93.4% | 88.8% | 1.3 |
+| C'. Final rules (R001-R012), **no** VPN option | 90.9% | 94.3% | 88.8% | 1.3 |
+| D. Final rules + R005 `ignore_cidrs` set to the generator's VPN range | 90.9% | 99.2% | 98.4% | 0.2 |
+| E. D with 2x benign noise | 90.9% | 97.8% | 95.5% | 0.5 |
+| F. D with 3x benign noise | 90.9% | 98.0% | 95.9% | 0.4 |
+
+**Reading this honestly:** the detection gain (72.7% to 90.9%) comes from the new rules R010 and R011. Almost all of the precision gain
+(94.3% to 99.2%) comes from one option, `ignore_cidrs`, set to the VPN range the generator uses, which a real operator would only
+get right by knowing their own network. Without it, precision is 94.3% (alert) / 88.8% (incident).
 
 On the original 8-attack set (no evasion attacks, 50 seeds): Week 2 rules 100% detection at 91.3% precision; final rules 100% at 99.1% precision (0.2 FP per log).
 
 ## Independent real-world test (LogHub OpenSSH, real sshd logs)
-Tested on 1,999 lines of public real-world sshd logs (12 attacker IPs, 528 failed logins, 1 legitimate login). First run:
+Tested on 2,000 lines of public real-world sshd logs (12 attacker IPs, 528 failed logins, 1 successful login treated as legitimate). First run:
 9/12 attacker IPs detected, 0 alerts on non-attacker IPs. The misses exposed a syslog "message repeated N times" parsing gap and
 an ultra-slow scanner, fixed by a parser change and rule R012: now 12/12 with 0 false positives (R012 was designed after seeing
 the miss, so 9/12 is the clean number). Full method, ground-truth definition and caveats: [docs/REAL_DATA_TEST.md](docs/REAL_DATA_TEST.md).
@@ -83,7 +91,7 @@ Remaining false positives (about 0.2-0.5 per log) are R002/R004/R008 firing on b
 - Data is synthetic and the rules and tuning options were chosen on the same generator (including the VPN range
   in step D), so these figures show the method works, not production performance. Real-world results are in the section above and are small-scale.
 - Attacks are correlated per source IP or per account; slow multi-account, multi-IP campaigns can still slip through.
-- Only sshd/group-change lines and a documented Windows CSV subset are parsed.
+- Only sshd/group-change lines and a documented Windows CSV subset are parsed. The Windows parser is verified only by a synthetic round-trip (same events as a Linux log), not on real Windows exports.
 - Thresholds are static; per-user baselines would further reduce noise.
 
 ## Layout

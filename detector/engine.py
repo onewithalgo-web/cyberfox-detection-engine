@@ -71,7 +71,7 @@ def run_rule(rule, events, trusted_ips=()):
         for ip, w in _window_hits(probes, lambda e: e.src_ip, window, lambda d: len(d) >= n):
             names = sorted({x.user for x in w})
             out.append(Alert(ts=w[-1].ts, src_ip=ip, users=names,
-                             reason=f"{ip} tried {len(w)} non-existent accounts ({', '.join(names[:5])}) within {int(window.total_seconds())}s",
+                             reason=f"{ip} made {len(w)} failed logins against non-existent accounts ({len(names)} distinct: {', '.join(names[:5])}) within {int(window.total_seconds())}s",
                              evidence=[x.raw for x in w], **base))
 
     elif t == "password_spraying":
