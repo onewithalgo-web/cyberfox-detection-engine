@@ -143,6 +143,7 @@ detector/   models, parsers (linux, windows), engine (rule types), incidents, cl
 rules/      one YAML file per rule (R001-R012)
 tools/      generate_logs.py, evaluate.py, real_log_check.py, to_windows_csv.py
 tests/      33 unit and end-to-end tests
-docs/       dashboard guide, screenshot, real-data test write-up
+docs/       dashboard guide, screenshots, real-data test write-up
+submission/ final 2-page report (PDF) and 5-slide presentation (PPTX)
 sample_data/ seeded synthetic log, labels and a sample dashboard
 ```
