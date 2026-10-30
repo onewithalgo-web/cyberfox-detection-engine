@@ -186,5 +186,38 @@ class WindowsAndNewRules(unittest.TestCase):
         self.assertNotIn("R001", a)
 
 
+class IncidentGrouping(unittest.TestCase):
+    def test_corroborating_alerts_become_one_incident(self):
+        from detector.incidents import group_alerts
+        a = alerts([ev(i * 5) for i in range(20)] + [ev(200 + i * 5, ok=False) for i in range(5)])
+        incs = group_alerts(a)
+        self.assertGreater(len(a), len(incs))
+        self.assertEqual(len(incs), 1)
+        self.assertEqual(incs[0].key, "1.1.1.1")
+        self.assertEqual(incs[0].severity, "high")
+
+    def test_separate_ips_separate_incidents(self):
+        from detector.incidents import group_alerts
+        evs = [ev(i * 5, ip="1.1.1.1") for i in range(6)] + [ev(i * 5, ip="2.2.2.2", user="bob") for i in range(6)]
+        self.assertEqual(len(group_alerts(alerts(evs))), 2)
+
+    def test_gap_splits_incident(self):
+        from detector.incidents import group_alerts
+        evs = [ev(i * 5) for i in range(6)] + [ev(10 * 3600 + i * 5) for i in range(6)]
+        self.assertEqual(len(group_alerts(alerts(evs))), 2)
+
+    def test_account_keyed_when_no_source_ip(self):
+        from detector.incidents import group_alerts
+        e = Event(T0, "h", "newuser", "-", True, raw="r", kind="account_created")
+        incs = group_alerts(alerts([e]))
+        self.assertEqual(incs[0].key, "account:newuser")
+
+    def test_distributed_attack_keyed_by_account(self):
+        from detector.incidents import group_alerts
+        evs = [ev(i * 30, user="alice", ip=f"9.9.9.{i % 5}") for i in range(12)]
+        incs = group_alerts(alerts(evs))
+        self.assertEqual([i.key for i in incs], ["account:alice"])
+
+
 if __name__ == "__main__":
     unittest.main()

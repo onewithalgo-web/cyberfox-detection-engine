@@ -31,6 +31,6 @@ The successful login produced no alert.
 **Honesty note:** R012 was designed after seeing this miss, so 12/12 is not a clean held-out result; the 9/12 first-run figure is the clean one. R012 was then re-checked on the synthetic data with no loss in recall and no new false positives (precision 99.2%), and has unit tests.
 
 ## Other observations
-- **Alert volume:** 39 alerts for 12 attackers (about 3 per attacker), because several rules corroborate the same activity (e.g. R001 + R007 + R011 for one burst). Useful as evidence, but a production version should group alerts by source IP.
+- **Alert volume:** 39 alerts for 12 attackers (about 3 per attacker), because several rules corroborate the same activity (e.g. R001 + R007 + R011 for one burst). Useful as evidence, but heavy to triage. The `--incidents` option groups them by source IP: **39 alerts become 12 incidents, exactly one per attacker IP** (a 69% reduction).
 - **Not counted:** the log has 113 `Invalid user X from IP` lines with no password attempt and 4 `Failed none` lines; the engine ignores these, so probing that never reaches a password prompt is invisible to it.
 - **Scale and scope:** 2k lines, one server, 4 hours, one attack style (password guessing). It shows the engine copes with real syslog quirks and real attacker behaviour, not that it is production-ready.

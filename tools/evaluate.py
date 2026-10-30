@@ -41,7 +41,12 @@ def score(alerts, labels):
 def run_once(log, labels, overrides, trusted=()):
     _, alerts = analyse(log, 2026, None, overrides, trusted)
     tp, fp, det, missed = score(alerts, labels)
+    from detector.incidents import group_alerts
+    tp_ids = {id(a) for a in tp}
+    incs = group_alerts(alerts)
+    inc_tp = sum(1 for i in incs if any(id(a) in tp_ids for a in i.alerts))
     return dict(alerts=len(alerts), tp=len(tp), fp=len(fp), attacks=len(labels), detected=len(det),
+                incidents=len(incs), incidents_tp=inc_tp,
                 missed=[m["type"] for m in missed], fp_rules=sorted({a.rule_id for a in fp}),
                 fp_by_rule={r: sum(1 for a in fp if a.rule_id == r) for r in sorted({a.rule_id for a in fp})})
 
@@ -71,6 +76,9 @@ def main():
         print(f"attack detection (recall): {det}/{att} = {det / att:.2%}")
         print(f"alert precision: {tp}/{tp + fp} = {tp / max(tp + fp, 1):.2%}   false positives/log: {fp / a.seeds:.1f}")
         print(f"incident precision (stricter, one credit per detected attack): {det}/{det + fp} = {det / max(det + fp, 1):.2%}")
+        inc = sum(r["incidents"] for r in rows); inc_tp = sum(r["incidents_tp"] for r in rows)
+        print(f"grouped into incidents (one per source IP/account): {tp + fp} alerts -> {inc} incidents "
+              f"({inc / a.seeds:.1f}/log); grouped precision {inc_tp}/{inc} = {inc_tp / max(inc, 1):.2%}")
         from collections import Counter
         print("false positives by rule:", dict(Counter(k for r in rows for k, v in r["fp_by_rule"].items() for _ in range(v))))
         print("missed attack types:", dict(Counter(m for r in rows for m in r["missed"])))

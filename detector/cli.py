@@ -41,6 +41,8 @@ def main(argv=None):
     ap.add_argument("--trusted-ip", action="append", default=[], help="ignore events from this IP")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--html", metavar="FILE", help="write a self-contained HTML dashboard")
+    ap.add_argument("--incidents", action="store_true",
+                    help="group corroborating alerts into one incident per source IP (or account)")
     a = ap.parse_args(argv)
     events, alerts = analyse(a.log, a.year, a.rules, parse_set(a.set), a.trusted_ip, a.format)
     if a.html:
@@ -48,6 +50,17 @@ def main(argv=None):
         with open(a.html, "w", encoding="utf-8") as f:
             f.write(render(alerts, len(events), os.path.basename(a.log)))
         print(f"dashboard written to {a.html}")
+    if a.incidents:
+        from .incidents import group_alerts
+        incs = group_alerts(alerts)
+        if a.json:
+            print(json.dumps([i.to_dict() for i in incs], indent=2))
+            return
+        print(f"{len(events)} events, {len(alerts)} alerts grouped into {len(incs)} incidents")
+        for i in incs:
+            print(f"[{i.severity.upper():8}] {i.start:%Y-%m-%d %H:%M} - {i.end:%H:%M}  {i.key}  "
+                  f"{len(i.alerts)} alerts ({', '.join(i.rule_ids)})\n    {i.summary}")
+        return
     if a.json:
         print(json.dumps([x.to_dict() for x in alerts], indent=2))
         return

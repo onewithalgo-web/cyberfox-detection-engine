@@ -1,13 +1,39 @@
 # Explainable Auth-Log Detection Engine
 
-CyberFox Society internship project (Security Operations & Detection Engineering).
-A lightweight, rule-based engine that reads authentication logs (Linux sshd `auth.log` and Windows Security
-event CSV exports) and raises **explainable** alerts: every alert states why it fired, maps to a MITRE ATT&CK
-technique, and carries the raw log lines as evidence. Read-only; synthetic or authorised data only.
+CyberFox Society Cybersecurity R&D Internship project (Security Operations & Detection Engineering).
+
+A lightweight, rule-based engine that reads authentication logs (Linux sshd `auth.log` and Windows Security event
+CSV exports) and raises **explainable** alerts: every alert states why it fired, maps to a MITRE ATT&CK technique,
+and carries the raw log lines as evidence. Corroborating alerts are grouped into **one incident per attacker**, and
+results can be viewed in a self-contained HTML dashboard. Read-only; synthetic or authorised data only.
 
 ## Problem
-Credential attacks (brute force, password spraying, stolen-credential use) are common, but small teams often
-lack a SIEM. This tool detects them from raw logs with transparent, tunable YAML rules.
+Credential attacks (brute force, password spraying, stolen-credential use) are common, but small teams often lack a
+SIEM, and generic thresholds are opaque and noisy. This tool detects these attacks from raw logs with transparent,
+tunable YAML rules, and is tested against both labelled synthetic logs and an independent real-world log.
+
+## How it works
+```mermaid
+flowchart LR
+    A[Linux auth.log] --> P1[parser.py]
+    B[Windows Security CSV] --> P2[parser_windows.py]
+    P1 --> E[Event stream]
+    P2 --> E
+    R[(rules/*.yml<br/>12 rules)] --> G[engine.py<br/>sliding-window rules]
+    E --> G
+    G --> AL[Alerts<br/>reason + MITRE + evidence lines]
+    AL --> I[incidents.py<br/>one incident per attacker]
+    AL --> C[CLI text / JSON]
+    I --> C
+    I --> D[HTML dashboard]
+    AL --> D
+```
+
+1. **Parse** log lines into normalised events (time, user, source IP, success, "invalid user" flag).
+2. **Detect** with YAML-defined rules applied over per-key sliding windows (per IP, per account, per IP+account).
+3. **Explain**: each alert carries a plain-English reason, the MITRE technique and the exact raw log lines behind it.
+4. **Group**: alerts for the same source IP (or account, when there is no single source) merge into one incident.
+5. **Show**: CLI output, JSON, or a single-file HTML dashboard with click-through evidence.
 
 ## Rules
 | ID | Detects | MITRE | Default |
@@ -30,10 +56,11 @@ lack a SIEM. This tool detects them from raw logs with transparent, tunable YAML
 pip install -r requirements.txt
 python tools/generate_logs.py --out sample_data --seed 42 --hard
 python -m detector.cli sample_data/auth.log --set R003.allow_users=ops_night --set R005.ignore_cidrs=172.16.0.0/16 --html sample_data/dashboard.html
+python -m detector.cli sample_data/auth.log --set R003.allow_users=ops_night --set R005.ignore_cidrs=172.16.0.0/16 --incidents
 python -m unittest discover -s tests -v
 python tools/evaluate.py --seeds 30 --hard --set R003.allow_users=ops_night --set R005.ignore_cidrs=172.16.0.0/16
 ```
-Options: `--format linux|windows|auto`, `--json`, `--html FILE`, `--rules DIR`, `--trusted-ip IP`,
+Options: `--format linux|windows|auto`, `--incidents`, `--json`, `--html FILE`, `--rules DIR`, `--trusted-ip IP`,
 `--set RULE.FIELD=VALUE` (override any threshold). Windows input is a CSV export of Security events
 4624/4625/4720/4732 (columns documented in `detector/parser_windows.py`).
 
@@ -47,13 +74,14 @@ night-shift user, benign VPN source changes and internet background noise, plus 
 it adds three evasion attacks (distributed brute force, very slow brute force, an insider using valid credentials).
 `tools/evaluate.py` scores every alert against the labels: an alert is a true positive if it has the attack's
 source IP, an expected rule, and falls in the attack window; otherwise it is a false positive. An attack is
-detected if at least one expected rule fires. 28 unit and end-to-end tests pass, including a check that the
+detected if at least one expected rule fires. 33 unit and end-to-end tests pass, including a check that the
 same events as a Linux log and as a Windows CSV produce identical alerts.
 
 ## Results (30 seeds, 11 attacks per seed = 330 labelled attacks, evasion attacks included)
 
 *Alert precision* counts every alert on a labelled attack as correct (several rules can corroborate one attack, which flatters it).
-*Incident precision* is stricter: one credit per detected attack, so a corroborating alert adds nothing.
+*Incident precision* is stricter: one credit per detected attack, so a corroborating alert adds nothing (it equals the precision
+of the grouped incidents produced by `--incidents`).
 
 | Step | Attack detection | Alert precision | Incident precision | False positives / log |
 |---|---|---|---|---|
@@ -71,12 +99,21 @@ get right by knowing their own network. Without it, precision is 94.3% (alert) /
 
 On the original 8-attack set (no evasion attacks, 50 seeds): Week 2 rules 100% detection at 91.3% precision; final rules 100% at 99.1% precision (0.2 FP per log).
 
+### Triage load: incident grouping
+Several rules legitimately corroborate the same attack (e.g. R001 + R007 + R011 for one burst), which is good evidence but
+multiplies what an analyst must read. Grouping cuts it:
+
+| Data | Alerts | Incidents | Reduction |
+|---|---|---|---|
+| Synthetic, 30 seeds (step D) | 635 | 305 | 52% |
+| Real LogHub log (12 attackers) | 39 | 12 (one per attacker IP) | 69% |
+
 ## Independent real-world test (LogHub OpenSSH, real sshd logs)
 Tested on 2,000 lines of public real-world sshd logs (12 attacker IPs, 528 failed logins, 1 successful login treated as legitimate). First run:
 9/12 attacker IPs detected, 0 alerts on non-attacker IPs. The misses exposed a syslog "message repeated N times" parsing gap and
 an ultra-slow scanner, fixed by a parser change and rule R012: now 12/12 with 0 false positives (R012 was designed after seeing
 the miss, so 9/12 is the clean number). Full method, ground-truth definition and caveats: [docs/REAL_DATA_TEST.md](docs/REAL_DATA_TEST.md).
-Reproduce with `python tools/real_log_check.py OpenSSH_2k.log --year 2015`.
+Reproduce with `python tools/real_log_check.py OpenSSH_2k.log --year 2015` (download `OpenSSH_2k.log` from https://github.com/logpai/loghub).
 
 ## Missed attacks (analysis on synthetic data)
 | Attack | Detected? | Why / fix |
@@ -89,16 +126,23 @@ Remaining false positives (about 0.2-0.5 per log) are R002/R004/R008 firing on b
 
 ## Limitations
 - Data is synthetic and the rules and tuning options were chosen on the same generator (including the VPN range
-  in step D), so these figures show the method works, not production performance. Real-world results are in the section above and are small-scale.
+  in step D), so these figures show the method works, not production performance. The real-world test is small
+  (one server, four hours, one attack style).
 - Attacks are correlated per source IP or per account; slow multi-account, multi-IP campaigns can still slip through.
 - Only sshd/group-change lines and a documented Windows CSV subset are parsed. The Windows parser is verified only by a synthetic round-trip (same events as a Linux log), not on real Windows exports.
-- Thresholds are static; per-user baselines would further reduce noise.
+- The engine ignores sshd "Invalid user" lines that never reach a password attempt, and `Failed none` lines.
+- Thresholds are static; per-user baselines would further reduce noise. Valid-credential misuse is undetectable from auth logs.
+
+## Ethics and scope
+Read-only analysis. Only synthetic data and one public research dataset (LogHub, not redistributed here) were used.
+No scanning or attack tooling is included.
 
 ## Layout
 ```
-detector/   models, parsers (linux, windows), engine (rule types), cli, dashboard
+detector/   models, parsers (linux, windows), engine (rule types), incidents, cli, dashboard
 rules/      one YAML file per rule (R001-R012)
 tools/      generate_logs.py, evaluate.py, real_log_check.py, to_windows_csv.py
-tests/      28 unit and end-to-end tests
+tests/      33 unit and end-to-end tests
 docs/       dashboard guide, screenshot, real-data test write-up
+sample_data/ seeded synthetic log, labels and a sample dashboard
 ```

@@ -22,9 +22,15 @@ Open the file in any browser (double-click it). It follows the system light/dark
 | **By rule** | Alerts per rule (ID + name) | Spot a noisy rule that needs tuning |
 | **Top source IPs** | Sources with the most alerts. `multiple` = a distributed attack on one account (R010) | Pick IPs to block or investigate |
 | **Alerts per day** | Daily alert counts (hover a bar for the exact number) | See when activity started or spiked |
+| **Incidents** | All alerts grouped into one incident per source IP (or per account when an alert has no single source IP, e.g. a distributed attack or a privilege change). Shows start time, highest severity, the rules that fired and the most serious reason. **Click a row** to list its alerts | Triage one item per attacker instead of one per rule |
 | **Alert detail** | Every alert: time, severity, rule, MITRE technique, source, and a plain-English reason | Triage; use the dropdown to filter to one rule |
 
 **Click any row** to expand the evidence: the exact raw log lines that triggered the alert, so a reviewer can verify it without opening the log.
+
+## Incidents vs alerts
+Several rules can legitimately fire on the same attack (e.g. R001 + R007 + R011 on one burst). The **Incidents** table merges them, so the real LogHub log's 39 alerts become 12 incidents (one per attacker IP). The same view is available on the command line with `--incidents`. Alerts for one IP stay in one incident until 6 hours pass with no new alert.
+
+![Incidents panel](dashboard_incidents.jpg)
 
 ## Severity scheme
 
@@ -32,7 +38,7 @@ Open the file in any browser (double-click it). It follows the system light/dark
 |---|---|---|
 | critical | R004 login succeeded after repeated failures | Probable account compromise |
 | high | R001, R002, R006, R010 | Active attack or privilege change |
-| medium | R003, R005, R007, R008 | Suspicious, often needs context |
+| medium | R003, R005, R007, R008, R012 | Suspicious, often needs context |
 | low | R009, R011 | Informational or very slow signals |
 
 ## Reading an example

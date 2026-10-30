@@ -32,10 +32,12 @@ select{background:var(--card);color:var(--fg);border:1px solid var(--bd);border-
 <div class="card"><h2>Top source IPs</h2><div id="byip"></div></div>
 <div class="card"><h2>Alerts per day</h2><div class="tl" id="tl"></div><div class="sub" id="tlr"></div></div>
 </div>
+<div class="card" style="margin-bottom:16px"><h2>Incidents <span class="sub" id="incsub" style="margin:0 0 0 6px;text-transform:none;letter-spacing:0"></span></h2>
+<div class="wrap"><table><thead><tr><th>Start</th><th>Severity</th><th>Source</th><th>Alerts</th><th>Rules</th><th>Summary</th></tr></thead><tbody id="incrows"></tbody></table></div></div>
 <div class="card"><h2>Alert detail <select id="f"><option value="">all rules</option></select></h2>
 <div class="wrap"><table><thead><tr><th>Time</th><th>Severity</th><th>Rule</th><th>MITRE</th><th>Source</th><th>Why it fired</th></tr></thead><tbody id="rows"></tbody></table></div></div>
 <script>
-const A=__DATA__,META=__META__;
+const A=__DATA__,META=__META__,INC=__INC__;
 const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 $('sub').textContent=META.events+' events analysed from '+META.source+' - '+A.length+' alerts';
 $('total').textContent=A.length;
@@ -52,10 +54,17 @@ function draw(){const f=$('f').value;$('rows').innerHTML=A.filter(a=>!f||a.rule_
 '<tr class="row" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden"><td>'+a.ts.replace('T',' ')+'</td><td><span class="sev '+a.severity+'">'+a.severity+'</span></td><td>'+a.rule_id+' '+esc(a.name)+'</td><td>'+a.mitre+'</td><td>'+esc(a.src_ip)+'</td><td>'+esc(a.reason)+'</td></tr>'+
 '<tr hidden><td colspan="6"><b>Evidence ('+a.evidence.length+' log lines)</b><pre>'+esc(a.evidence.join('\\n'))+'</pre></td></tr>').join('')}
 $('f').onchange=draw;draw();
+function drawInc(){$('incsub').textContent=A.length+' alerts grouped into '+INC.length+' incidents (one per source IP or account)';
+$('incrows').innerHTML=INC.map(i=>'<tr class="row" onclick="this.nextElementSibling.hidden=!this.nextElementSibling.hidden"><td>'+i.start.replace('T',' ').slice(0,16)+'</td><td><span class="sev '+i.severity+'">'+i.severity+'</span></td><td>'+esc(i.key)+'</td><td>'+i.alert_count+'</td><td>'+i.rules.join(', ')+'</td><td>'+esc(i.summary)+'</td></tr>'+
+'<tr hidden><td colspan="6"><b>Alerts in this incident</b><pre>'+esc(i.alerts.map(a=>a.ts.replace('T',' ')+'  '+a.rule_id+'  '+a.reason).join('\\n'))+'</pre></td></tr>').join('')}
+drawInc();
+
 </script></body></html>"""
 
 
 def render(alerts, events_count, source):
+    from .incidents import group_alerts
+    inc = json.dumps([i.to_dict() for i in group_alerts(alerts)]).replace("</", "<\\/")
     data = json.dumps([a.to_dict() for a in alerts]).replace("</", "<\\/")
     meta = json.dumps({"events": events_count, "source": source}).replace("</", "<\\/")
-    return TEMPLATE.replace("__DATA__", data).replace("__META__", meta)
+    return TEMPLATE.replace("__DATA__", data).replace("__META__", meta).replace("__INC__", inc)
