@@ -219,5 +219,49 @@ class IncidentGrouping(unittest.TestCase):
         self.assertEqual([i.key for i in incs], ["account:alice"])
 
 
+class RegressionTests(unittest.TestCase):
+    """One test per defect in docs/TEST_PLAN.md (BUG-01 to BUG-04)."""
+
+    def _write(self, lines):
+        import tempfile
+        path = os.path.join(tempfile.mkdtemp(), "auth.log")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(chr(10).join(lines) + chr(10))
+        return path
+
+    def test_bug01_ipv6_source_kept_whole(self):
+        a = parse_line("Nov  9 10:00:00 srv sshd[1]: Failed password for root from 2001:db8::1 port 22 ssh2", 2026)
+        b = parse_line("Nov  9 10:00:01 srv sshd[1]: Failed password for root from 2001:db8::2 port 22 ssh2", 2026)
+        self.assertEqual(a.src_ip, "2001:db8::1")
+        self.assertNotEqual(a.src_ip, b.src_ip)
+
+    def test_bug01_ipv4_still_parsed(self):
+        e = parse_line("Nov  9 10:00:00 srv sshd[1]: Failed password for root from 203.0.113.5 port 22 ssh2", 2026)
+        self.assertEqual(e.src_ip, "203.0.113.5")
+
+    def test_bug02_keyboard_interactive_counts_as_login(self):
+        lines = [f"Nov  9 10:00:{s:02d} srv sshd[1]: Failed keyboard-interactive/pam for root from 203.0.113.5 port 22 ssh2"
+                 for s in (0, 10, 20, 30, 40)]
+        events = [parse_line(l, 2026) for l in lines]
+        self.assertTrue(all(e is not None and not e.success for e in events))
+        self.assertIn("R001", ids(alerts(events)))
+
+    def test_bug03_overnight_business_hours(self):
+        def login(hour):
+            return Event(datetime(2026, 11, 9, hour, 0, 0), "h", "alice", "1.1.1.1", True, raw=f"h{hour}")
+        out = alerts([login(2), login(12), login(22)], R003={"business_start": 20, "business_end": 6})
+        r003 = [a for a in out if a.rule_id == "R003"]
+        self.assertEqual([a.ts.hour for a in r003], [12])
+
+    def test_bug04_year_rollover_keeps_order(self):
+        path = self._write([
+            "Dec 31 23:59:00 srv sshd[1]: Failed password for root from 203.0.113.5 port 22 ssh2",
+            "Jan  1 00:01:00 srv sshd[1]: Failed password for root from 203.0.113.5 port 22 ssh2",
+        ])
+        from detector.parser import parse_file
+        events = parse_file(path, 2026)
+        self.assertEqual([e.ts for e in events], [datetime(2026, 12, 31, 23, 59), datetime(2027, 1, 1, 0, 1)])
+
+
 if __name__ == "__main__":
     unittest.main()

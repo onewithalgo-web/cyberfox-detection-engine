@@ -66,6 +66,8 @@ Options: `--format linux|windows|auto`, `--incidents`, `--json`, `--html FILE`, 
 
 Dashboard documentation (panels, severity scheme, how to read an alert): [docs/DASHBOARD.md](docs/DASHBOARD.md).
 
+Test plan and bug log (18 manual boundary cases, 4 defects found and fixed): [docs/TEST_PLAN.md](docs/TEST_PLAN.md).
+
 ![Dashboard](docs/dashboard.jpg)
 
 ## Testing methodology

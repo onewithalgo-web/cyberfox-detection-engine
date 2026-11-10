@@ -4,7 +4,9 @@ from datetime import datetime
 from .models import Event
 
 LINE = re.compile(r"^(?P<mon>\w{3})\s+(?P<day>\d+)\s+(?P<time>[\d:]{8})\s+(?P<host>\S+)\s+(?P<proc>\S+?)(?:\[\d+\])?:\s+(?P<msg>.*)$")
-LOGIN = re.compile(r"^(?P<res>Failed|Accepted) (?P<method>password|publickey) for (?P<inv>invalid user\s+)?(?P<user>\S+) from (?P<ip>[\d.]+)")
+LOGIN = re.compile(r"^(?P<res>Failed|Accepted) (?P<method>password|publickey|keyboard-interactive(?:/pam)?) for "
+                   r"(?P<inv>invalid user\s+)?(?P<user>\S+) from "
+                   r"(?P<ip>\d{1,3}(?:\.\d{1,3}){3}|[0-9A-Fa-f:]*:[0-9A-Fa-f:.]*)")
 REPEATED = re.compile(r"^message repeated (?P<n>\d+) times?: \[\s*(?P<inner>.*)\]\s*$")
 SUDOADD = re.compile(r"^add '(?P<user>\S+)' to group '(?P<grp>sudo|wheel|admin)'")
 
@@ -33,11 +35,18 @@ def parse_line(line, year):
 
 
 def parse_file(path, year):
+    """`year` is the year of the first line. auth.log has no year, so when the month number drops by
+    more than six between consecutive lines (Dec -> Jan) the year is advanced."""
     events = []
+    last_month = None
     with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             e = parse_line(line, year)
+            if e and last_month is not None and last_month - e.ts.month > 6:
+                year += 1
+                e = parse_line(line, year)
             if e:
+                last_month = e.ts.month
                 events.extend([e] * e.repeat)
     events.sort(key=lambda e: e.ts)
     return events

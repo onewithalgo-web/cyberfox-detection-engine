@@ -88,7 +88,8 @@ def run_rule(rule, events, trusted_ips=()):
         allow = rule.get("allow_users") or []
         allow = set(allow.split(",") if isinstance(allow, str) else allow)
         for e in logins:
-            if e.success and e.user not in allow and not (start <= e.ts.hour < end):
+            in_hours = (start <= e.ts.hour < end) if start <= end else (e.ts.hour >= start or e.ts.hour < end)
+            if e.success and e.user not in allow and not in_hours:
                 out.append(Alert(ts=e.ts, src_ip=e.src_ip, users=[e.user],
                                  reason=f"successful login for '{e.user}' at {e.ts:%H:%M}, outside {start:02d}:00-{end:02d}:00",
                                  evidence=[e.raw], **base))
